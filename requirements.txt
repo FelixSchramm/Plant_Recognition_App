@@ -51,3 +51,7 @@ pytorch-lightning
 
 # For Model Hub Integration
 huggingface_hub
+
+# Compatibility fix
+streamlit>=1.39.0
+protobuf>=5.28.0
