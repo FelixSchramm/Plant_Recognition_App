@@ -19,6 +19,9 @@ The project successfully developed a highly accurate deep learning model using *
 
 This approach resulted in strong generalization capabilities, as evidenced by the convergence of training and validation accuracy curves near 100%. The model's reasoning was validated using interpretability techniques like Grad-CAM and SHAP, which showed the model correctly focused on relevant features like leaf texture and vein patterns to make predictions.
 
+### Live Diagnosis Feature
+The Streamlit app includes an interactive **Live Diagnosis** page: upload a leaf image (or pick a bundled example) and the app predicts the plant, whether it is healthy or diseased, the model confidence and the top-3 alternatives. The trained MobileNetV2 model is loaded at runtime from the Hugging Face Hub (configured via the app secrets `hf_model_repo` / `hf_model_filename`); until it is connected, the page runs in a clearly labelled demo mode with simulated predictions.
+
 ### Deployed App
 https://plant-recognition-app.streamlit.app/ 
 
