@@ -74,7 +74,12 @@ Here is a guide to the different sections of this application, which you can nav
 * Explore its structure, training history, and detailed performance evaluation.
 * Employs techniques like Grad-CAM and SHAP (SHapley Additive exPlanations) to provide deeper insights into how this complex model arrives at its predictions.
 
-**5. About Page:**
+**5. Live Diagnosis - Try the Model Yourself:**
+* Upload your own leaf image (or pick a bundled example) and get an instant prediction.
+* See the recognised plant, whether it looks healthy or diseased, the model's confidence and the top-3 alternatives.
+* Turns the project from a static results showcase into a hands-on, end-to-end demonstration of the trained model.
+
+**6. About Page:**
 * Learn more about the project's background and its creation as part of a Data Science program.
 * Meet the development team and the project supervisor.
 * Find links to the team's professional profiles.
