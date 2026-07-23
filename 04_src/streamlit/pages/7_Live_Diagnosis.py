@@ -123,3 +123,32 @@ figure = px.bar(
 )
 figure.update_layout(yaxis=dict(autorange="reversed"), height=260)
 st.plotly_chart(figure, use_container_width=True)
+
+# --- Grad-CAM explanation --------------------------------------------------
+st.markdown("**Model attention (Grad-CAM)**")
+st.caption(
+    "Grad-CAM highlights the regions the model focused on. Warm colours mark "
+    "the areas that most influenced the prediction."
+)
+
+if diagnosis.is_mock_backend(model_bundle):
+    st.info(
+        "The Grad-CAM overlay is shown here once the trained model is "
+        "connected. It cannot be computed in demo mode."
+    )
+else:
+    with st.spinner("Computing Grad-CAM overlay..."):
+        overlay = diagnosis.compute_gradcam_overlay(model_bundle, image)
+    if overlay is None:
+        st.info(
+            "A Grad-CAM overlay could not be computed for this image and "
+            "model architecture."
+        )
+    else:
+        original_col, overlay_col = st.columns(2)
+        original_col.image(
+            image.convert("RGB").resize(diagnosis.IMAGE_SIZE),
+            caption="Original",
+            use_container_width=True,
+        )
+        overlay_col.image(overlay, caption="Grad-CAM", use_container_width=True)

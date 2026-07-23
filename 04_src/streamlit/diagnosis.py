@@ -253,3 +253,89 @@ def list_example_images(limit=6):
         raw = os.path.basename(path).rsplit("_original_img", 1)[0]
         examples.append((format_class_name(raw), path))
     return examples
+
+
+def _find_last_conv_layer(model):
+    """Recursively find the last layer with a 4D (convolutional) output.
+
+    Handles nested sub-models such as the MobileNetV2 base by descending into
+    any layer that itself contains layers.
+
+    :param model: A Keras model (possibly containing nested models).
+    :return: The last convolutional layer, or ``None`` if there is none.
+    """
+    last = None
+    for layer in model.layers:
+        if hasattr(layer, "layers") and layer.layers:
+            nested = _find_last_conv_layer(layer)
+            if nested is not None:
+                last = nested
+        else:
+            try:
+                rank = len(layer.output.shape)
+            except Exception:
+                rank = None
+            if rank == 4:
+                last = layer
+    return last
+
+
+def compute_gradcam_overlay(model_bundle, image, alpha=0.4):
+    """Compute a Grad-CAM overlay highlighting the decisive image regions.
+
+    Returns ``None`` (instead of raising) whenever the overlay cannot be
+    produced: in demo mode, when no convolutional layer is found or when the
+    model graph does not allow tracing the activations. Callers should treat
+    ``None`` as "not available" and degrade gracefully.
+
+    :param model_bundle: Bundle returned by :func:`load_diagnosis_model`.
+    :param image: A ``PIL.Image`` instance to explain.
+    :param alpha: Blend weight of the heatmap over the original image.
+    :return: ``numpy`` array of shape ``(224, 224, 3)`` in the 0-1 range, or
+        ``None`` when an overlay is not available.
+    """
+    if is_mock_backend(model_bundle):
+        return None
+
+    try:
+        import matplotlib.cm as cm
+        import tensorflow as tf
+
+        model = model_bundle["model"]
+        array = np.asarray(image.convert("RGB").resize(IMAGE_SIZE), dtype="float32")
+
+        conv_layer = _find_last_conv_layer(model)
+        if conv_layer is None:
+            return None
+
+        grad_model = tf.keras.models.Model(
+            model.inputs, [conv_layer.output, model.output]
+        )
+
+        with tf.GradientTape() as tape:
+            inputs = tf.cast(array[None, ...], tf.float32)
+            conv_output, predictions = grad_model(inputs)
+            class_index = tf.argmax(predictions[0])
+            loss = predictions[:, class_index]
+
+        grads = tape.gradient(loss, conv_output)
+        if grads is None:
+            return None
+
+        pooled_grads = tf.reduce_mean(grads, axis=(0, 1, 2))
+        conv_output = conv_output[0]
+        heatmap = tf.reduce_sum(pooled_grads * conv_output, axis=-1)
+        heatmap = tf.maximum(heatmap, 0)
+
+        max_value = tf.math.reduce_max(heatmap)
+        if max_value == 0:
+            return None
+        heatmap = heatmap / max_value
+
+        heatmap = tf.image.resize(heatmap[..., tf.newaxis], IMAGE_SIZE).numpy()
+        heatmap = np.squeeze(heatmap)
+        heatmap_color = cm.jet(heatmap)[..., :3]
+        overlay = heatmap_color * alpha + (array / 255.0) * (1 - alpha)
+        return np.clip(overlay, 0, 1)
+    except Exception:  # noqa: BLE001 - overlay is optional, never crash the page
+        return None
